@@ -132,6 +132,7 @@ int tracing_on = 0;
 /* Commandline options. */
 int dump_on_exit        = 0; /* (O) dump regs on exit */
 int start_in_fullscreen = 0; /* (O) start in fullscreen */
+int voodoo_trace_max_frames = 0; /* (O) max frames to trace (0=unlimited) */
 #ifdef _WIN32
 int force_debug = 0; /* (O) force debug output */
 #endif
@@ -726,6 +727,9 @@ pc_show_usage(void)
             "\t\t\t\t   point on init/hard reset\n"
 #endif
             "-V or --vmname name\t\t- overrides the name of the running VM\n"
+#ifdef ENABLE_VOODOO_TRACE
+            "--voodoo-trace-frames N\t- capture first N frames only (0=unlimited)\n"
+#endif
 #ifdef _WIN32
             "-W or --nohook\t\t- disables keyboard hook\n"
 #else
@@ -986,6 +990,12 @@ usage:
                 goto usage;
             instru_enabled = 1;
             sscanf(argv[++c], "%llu", &instru_run_ms);
+#endif
+#ifdef ENABLE_VOODOO_TRACE
+        } else if (!strcasecmp(argv[c], "--voodoo-trace-frames")) {
+            if ((c + 1) == argc)
+                goto usage;
+            voodoo_trace_max_frames = atoi(argv[++c]);
 #endif
         }
 

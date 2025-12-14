@@ -46,6 +46,9 @@
 #include <86box/vid_voodoo_regs.h>
 #include <86box/vid_voodoo_render.h>
 #include <86box/vid_voodoo_texture.h>
+#ifdef ENABLE_VOODOO_TRACE
+#include <86box/vid_voodoo_trace.h>
+#endif
 
 rgba8_t rgb332[0x100];
 rgba8_t ai44[0x100];
@@ -211,6 +214,7 @@ static uint16_t
 voodoo_readw(uint32_t addr, void *priv)
 {
     voodoo_t *voodoo = (voodoo_t *) priv;
+    uint16_t result;
 
     addr &= 0xffffff;
 
@@ -292,10 +296,20 @@ voodoo_readw(uint32_t addr, void *priv)
             }
         }
 
-        return voodoo_fb_readw(addr, voodoo);
+        result = voodoo_fb_readw(addr, voodoo);
+#ifdef ENABLE_VOODOO_TRACE
+        if (voodoo->trace)
+            voodoo_trace_read(voodoo->trace, VOODOO_TRACE_READ_FB_W, addr, result);
+#endif
+        return result;
     }
 
-    return 0xffff;
+    result = 0xffff;
+#ifdef ENABLE_VOODOO_TRACE
+    if (voodoo->trace)
+        voodoo_trace_read(voodoo->trace, VOODOO_TRACE_READ_REG_W, addr, result);
+#endif
+    return result;
 }
 
 static uint32_t
@@ -612,6 +626,18 @@ voodoo_readl(uint32_t addr, void *priv)
         }
     }
 
+#ifdef ENABLE_VOODOO_TRACE
+    if (voodoo->trace) {
+        voodoo_trace_cmd_t cmd_type;
+        if (addr & 0x800000)
+            cmd_type = VOODOO_TRACE_READ_FB_L;  /* Texture reads rare */
+        else if (addr & 0x400000)
+            cmd_type = VOODOO_TRACE_READ_FB_L;
+        else
+            cmd_type = VOODOO_TRACE_READ_REG_L;
+        voodoo_trace_read(voodoo->trace, cmd_type, addr, temp);
+    }
+#endif
     return temp;
 }
 
@@ -623,6 +649,11 @@ voodoo_writew(uint32_t addr, uint16_t val, void *priv)
     addr &= 0xffffff;
 
     cycles -= voodoo->write_time;
+
+#ifdef ENABLE_VOODOO_TRACE
+    if (voodoo->trace)
+        voodoo_trace_write(voodoo->trace, VOODOO_TRACE_WRITE_FB_W, addr, val);
+#endif
 
     if ((addr & 0xc00000) == 0x400000) /*Framebuffer*/
         voodoo_queue_command(voodoo, addr | FIFO_WRITEW_FB, val);
@@ -642,6 +673,21 @@ voodoo_writel(uint32_t addr, uint32_t val, void *priv)
     else
         cycles -= voodoo->write_time;
     voodoo->last_write_addr = addr;
+
+#ifdef ENABLE_VOODOO_TRACE
+    if (voodoo->trace) {
+        voodoo_trace_cmd_t cmd_type;
+        if (addr & 0x800000)
+            cmd_type = VOODOO_TRACE_WRITE_TEX_L;
+        else if (addr & 0x400000)
+            cmd_type = VOODOO_TRACE_WRITE_FB_L;
+        else if ((addr & 0x200000) && (voodoo->fbiInit7 & FBIINIT7_CMDFIFO_ENABLE))
+            cmd_type = VOODOO_TRACE_WRITE_CMDFIFO;
+        else
+            cmd_type = VOODOO_TRACE_WRITE_REG_L;
+        voodoo_trace_write(voodoo->trace, cmd_type, addr, val);
+    }
+#endif
 
     if (addr & 0x800000) /*Texture*/
     {
@@ -1311,6 +1357,27 @@ voodoo_card_init(void)
     voodoo->can_blit         = 0;
     voodoo->force_blit_mutex = thread_create_mutex();
 
+#ifdef ENABLE_VOODOO_TRACE
+    /* Initialize trace capture */
+    voodoo->trace = malloc(sizeof(voodoo_trace_t));
+    if (voodoo->trace) {
+        voodoo_trace_header_t hdr;
+        memset(&hdr, 0, sizeof(hdr));
+        hdr.magic = 0x564F4F44;  /* "VOOD" */
+        hdr.version = 1;
+        hdr.voodoo_type = voodoo->type;
+        hdr.fb_size_mb = voodoo->fb_size;
+        hdr.tex_size_mb = voodoo->texture_size;
+        hdr.num_tmus = voodoo->dual_tmus ? 2 : 1;
+        hdr.pci_base_addr = 0;  /* Will be set later by PCI config */
+        hdr.cpu_speed_hz = (uint64_t)cpu_s->rspeed;
+        hdr.pci_speed_hz = cpu_pci_speed;
+
+        voodoo_trace_init(voodoo->trace, "voodoo_trace.bin", &hdr, 1);
+        pclog("Voodoo trace capture enabled: voodoo_trace.bin\n");
+    }
+#endif
+
     return voodoo;
 }
 
@@ -1444,6 +1511,27 @@ voodoo_2d3d_card_init(int type)
     voodoo->can_blit         = 0;
     voodoo->force_blit_mutex = thread_create_mutex();
 
+#ifdef ENABLE_VOODOO_TRACE
+    /* Initialize trace capture */
+    voodoo->trace = malloc(sizeof(voodoo_trace_t));
+    if (voodoo->trace) {
+        voodoo_trace_header_t hdr;
+        memset(&hdr, 0, sizeof(hdr));
+        hdr.magic = 0x564F4F44;  /* "VOOD" */
+        hdr.version = 1;
+        hdr.voodoo_type = voodoo->type;
+        hdr.fb_size_mb = voodoo->fb_size;
+        hdr.tex_size_mb = voodoo->texture_size;
+        hdr.num_tmus = voodoo->dual_tmus ? 2 : 1;
+        hdr.pci_base_addr = 0;  /* Will be set later by PCI config */
+        hdr.cpu_speed_hz = (uint64_t)cpu_s->rspeed;
+        hdr.pci_speed_hz = cpu_pci_speed;
+
+        voodoo_trace_init(voodoo->trace, "voodoo_trace.bin", &hdr, 1);
+        pclog("Voodoo trace capture enabled: voodoo_trace.bin\n");
+    }
+#endif
+
     return voodoo;
 }
 
@@ -1507,6 +1595,15 @@ voodoo_init(UNUSED(const device_t *info))
 void
 voodoo_card_close(voodoo_t *voodoo)
 {
+#ifdef ENABLE_VOODOO_TRACE
+    /* Close trace capture */
+    if (voodoo && voodoo->trace) {
+        voodoo_trace_close(voodoo->trace);
+        free(voodoo->trace);
+        voodoo->trace = NULL;
+    }
+#endif
+
     voodoo->fifo_thread_run = 0;
     thread_set_event(voodoo->wake_fifo_thread);
     thread_wait(voodoo->fifo_thread);
@@ -1732,7 +1829,6 @@ static const device_config_t voodoo_config[] = {
     { .name = "", .description = "", .type = CONFIG_END }
   // clang-format on
 };
-
 const device_t voodoo_device = {
     .name          = "3Dfx Voodoo Graphics",
     .internal_name = "voodoo",

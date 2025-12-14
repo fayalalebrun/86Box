@@ -172,8 +172,12 @@ add_library(voodoo OBJECT
     vid_voodoo_render.c
     vid_voodoo_setup.c
     vid_voodoo_texture.c
+    vid_voodoo_trace.c
 )
 
 if(NOT MSVC AND (ARCH STREQUAL "i386" OR ARCH STREQUAL "x86_64"))
     target_compile_options(voodoo PRIVATE "-msse2")
 endif()
+
+# Enable Voodoo trace capture (uncomment to disable)
+target_compile_definitions(voodoo PRIVATE ENABLE_VOODOO_TRACE)

@@ -207,6 +207,7 @@ extern int      isarom_type[];              /* (C) enable ISA ROM cards */
 extern int      isartc_type;                /* (C) enable ISA RTC card */
 extern int      sound_is_float;             /* (C) sound uses FP values */
 extern int      voodoo_enabled;             /* (C) video option */
+extern int      voodoo_trace_max_frames;    /* (O) max frames to trace */
 extern int      ibm8514_standalone_enabled; /* (C) video option */
 extern int      xga_standalone_enabled;     /* (C) video option */
 extern int      da2_standalone_enabled;     /* (C) video option */

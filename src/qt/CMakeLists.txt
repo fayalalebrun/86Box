@@ -23,10 +23,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if (USE_QT6)
-    set(QT_MAJOR 6)
-else()
+if (USE_QT5)
     set(QT_MAJOR 5)
+else()
+    set(QT_MAJOR 6)
 endif()
 
 set(QT_STATIC ${STATIC_BUILD})

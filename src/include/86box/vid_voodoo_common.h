@@ -29,6 +29,16 @@
 
 #define TEX_CACHE_MAX   64
 
+/* Forward declaration for trace context */
+typedef struct voodoo_trace_t voodoo_trace_t;
+
+#ifdef __cplusplus
+#    include <atomic>
+using atomic_int = std::atomic<int>;
+#else
+#    include <stdatomic.h>
+#endif
+
 enum {
     VOODOO_1 = 0,
     VOODOO_SB50,
@@ -722,6 +732,10 @@ typedef struct voodoo_t {
 
     void   *priv;
     uint8_t monitor_index;
+
+#ifdef ENABLE_VOODOO_TRACE
+    struct voodoo_trace_t *trace;
+#endif
 } voodoo_t;
 
 typedef struct voodoo_set_t {

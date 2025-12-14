@@ -37,6 +37,9 @@
 #include <86box/vid_voodoo_display.h>
 #include <86box/vid_voodoo_regs.h>
 #include <86box/vid_voodoo_render.h>
+#ifdef ENABLE_VOODOO_TRACE
+#include <86box/vid_voodoo_trace.h>
+#endif
 
 #ifdef ENABLE_VOODOODISP_LOG
 int voodoodisp_do_log = ENABLE_VOODOODISP_LOG;
@@ -582,6 +585,14 @@ skip_draw:
         voodoodisp_log("retrace %i %i %08x %i\n", voodoo->retrace_count, voodoo->swap_interval, voodoo->swap_offset, voodoo->swap_pending);
 #endif
         voodoo->retrace_count++;
+
+#ifdef ENABLE_VOODOO_TRACE
+        /* Trace VSync event */
+        if (voodoo->trace) {
+            uint32_t resolution = (voodoo->h_disp << 16) | voodoo->v_disp;
+            voodoo_trace_vsync(voodoo->trace, voodoo->frame_count, resolution);
+        }
+#endif
         if (SLI_ENABLED && (voodoo->fbiInit2 & FBIINIT2_SWAP_ALGORITHM_MASK) == FBIINIT2_SWAP_ALGORITHM_SLI_SYNC) {
             if (voodoo == voodoo->set->voodoos[0]) {
                 voodoo_t *voodoo_1 = voodoo->set->voodoos[1];
@@ -609,6 +620,14 @@ skip_draw:
 
                     voodoo->frame_count++;
                     voodoo_1->frame_count++;
+
+#ifdef ENABLE_VOODOO_TRACE
+                    /* Trace buffer swap for SLI */
+                    if (voodoo->trace) {
+                        uint32_t resolution = (voodoo->h_disp << 16) | voodoo->v_disp;
+                        voodoo_trace_swap(voodoo->trace, voodoo->swap_offset, voodoo->frame_count, resolution);
+                    }
+#endif
                 } else
                     thread_release_mutex(voodoo->swap_mutex);
             }
@@ -625,6 +644,14 @@ skip_draw:
                 voodoo->retrace_count = 0;
                 thread_set_event(voodoo->wake_fifo_thread);
                 voodoo->frame_count++;
+
+#ifdef ENABLE_VOODOO_TRACE
+                /* Trace buffer swap */
+                if (voodoo->trace) {
+                    uint32_t resolution = (voodoo->h_disp << 16) | voodoo->v_disp;
+                    voodoo_trace_swap(voodoo->trace, voodoo->swap_offset, voodoo->frame_count, resolution);
+                }
+#endif
             } else
                 thread_release_mutex(voodoo->swap_mutex);
         }
