@@ -684,6 +684,8 @@ voodoo_writel(uint32_t addr, uint32_t val, void *priv)
         else if ((addr & 0x200000) && (voodoo->fbiInit7 & FBIINIT7_CMDFIFO_ENABLE))
             cmd_type = VOODOO_TRACE_WRITE_CMDFIFO;
         else
+            /* Register space: 0x000000-0x3FFFFF (bits 23:22 = 00)
+             * This includes alternate register map when pci_ad[21]=1 and fbiInit3(0)=1 */
             cmd_type = VOODOO_TRACE_WRITE_REG_L;
         voodoo_trace_write(voodoo->trace, cmd_type, addr, val);
     }
@@ -1373,7 +1375,7 @@ voodoo_card_init(void)
         hdr.cpu_speed_hz = (uint64_t)cpu_s->rspeed;
         hdr.pci_speed_hz = cpu_pci_speed;
 
-        voodoo_trace_init(voodoo->trace, "voodoo_trace.bin", &hdr, 1);
+        voodoo_trace_init(voodoo->trace, "voodoo_trace.bin", &hdr, 1, voodoo);
         pclog("Voodoo trace capture enabled: voodoo_trace.bin\n");
     }
 #endif
@@ -1527,7 +1529,7 @@ voodoo_2d3d_card_init(int type)
         hdr.cpu_speed_hz = (uint64_t)cpu_s->rspeed;
         hdr.pci_speed_hz = cpu_pci_speed;
 
-        voodoo_trace_init(voodoo->trace, "voodoo_trace.bin", &hdr, 1);
+        voodoo_trace_init(voodoo->trace, "voodoo_trace.bin", &hdr, 1, voodoo);
         pclog("Voodoo trace capture enabled: voodoo_trace.bin\n");
     }
 #endif

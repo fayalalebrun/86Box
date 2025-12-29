@@ -626,6 +626,11 @@ skip_draw:
                     if (voodoo->trace) {
                         uint32_t resolution = (voodoo->h_disp << 16) | voodoo->v_disp;
                         voodoo_trace_swap(voodoo->trace, voodoo->swap_offset, voodoo->frame_count, resolution);
+                        /* Dump framebuffer that just became the front buffer */
+                        voodoo_trace_dump_framebuffer(voodoo->trace, voodoo->fb_mem,
+                                                      voodoo->front_offset,
+                                                      voodoo->h_disp, voodoo->v_disp,
+                                                      voodoo->row_width, voodoo->frame_count);
                     }
 #endif
                 } else
@@ -650,6 +655,11 @@ skip_draw:
                 if (voodoo->trace) {
                     uint32_t resolution = (voodoo->h_disp << 16) | voodoo->v_disp;
                     voodoo_trace_swap(voodoo->trace, voodoo->swap_offset, voodoo->frame_count, resolution);
+                    /* Dump framebuffer that just became the front buffer */
+                    voodoo_trace_dump_framebuffer(voodoo->trace, voodoo->fb_mem,
+                                                  voodoo->front_offset,
+                                                  voodoo->h_disp, voodoo->v_disp,
+                                                  voodoo->row_width, voodoo->frame_count);
                 }
 #endif
             } else
